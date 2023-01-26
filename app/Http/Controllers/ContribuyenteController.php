@@ -261,7 +261,7 @@
 
         }
 
-
+ /* este */
         public function estado_cuenta(Request $request){
 
             $interlocutor = app('db')->select(" SELECT PREDIO
@@ -309,7 +309,7 @@
             ];
 
             $context = stream_context_create($options);
-            $result = file_get_contents('http://172.23.25.36/funciones-rfc-desarrollo/ZPSCD_ESTADO_CUENTAS.php', false, $context);
+            $result = file_get_contents('http://172.23.25.36/funciones-rfc/ZPSCD_ESTADO_CUENTAS.php', false, $context);
 
             return json_decode($result,true);
         }

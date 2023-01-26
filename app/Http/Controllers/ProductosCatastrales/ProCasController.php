@@ -148,6 +148,8 @@ class ProCasController extends Controller{
 
         if (count($matriculas) > 0){
 
+            
+
             foreach($matriculas as $matricula){
 
                 $catastral = 'X';

@@ -69,7 +69,8 @@ class ProCasController extends Controller{
 
             $opciones = app('db')->select(" SELECT  ID_OPCION,
                                                     NOMBRE,
-                                                    ACTIVO
+                                                    ACTIVO,
+                                                    PRECIO
                                             FROM    CATASTRO.SERV_OPCIONES
                                             WHERE   ACTIVO = 1");
 
@@ -136,6 +137,8 @@ class ProCasController extends Controller{
 
     public function validar_requisitos(Request $request){
 
+        $hoy = date('Ymd');
+
         $matriculas = app('db')->select("   SELECT  MU.ID,
                                                     MU.MATRICULA
                                             FROM    CATASTRO.SERV_MATRICULA_USUARIO MU,
@@ -172,7 +175,7 @@ class ProCasController extends Controller{
                     'NAME_FUNCTION'=>'ZIUSI_SALDOTRIMESTRE_RFC',
                     'PARAM' => [
                         ["IMPORT","IDENTIFICAR",$matricula->matricula],
-                        ["IMPORT","DATE","20171231"],
+                        ["IMPORT","DATE",$hoy],
                         ["EXPORT","IC"],
                         ["EXPORT","SALDO"],
                         ["EXPORT","ZONA"],

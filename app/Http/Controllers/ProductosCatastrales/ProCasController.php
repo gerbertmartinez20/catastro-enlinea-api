@@ -310,7 +310,7 @@ class ProCasController extends Controller{
                 $usuario->direccion = $request->direccion;
                 $usuario->telefono = $request->telefono;
                 $usuario->dpi = $request->dpi;
-                $usuario->password = '123456';
+                $usuario->password = $request->password;
                 $usuario->save();
 
                 $response = [

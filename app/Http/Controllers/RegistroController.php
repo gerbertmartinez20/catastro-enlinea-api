@@ -134,7 +134,7 @@
             $usuario->apellidos = $datos->apellidos;
             $usuario->sexo = $datos->sexo;
             $usuario->email = $datos->email;
-            $usuario->password = $datos->password;
+            $usuario->password = md5($datos->password);
             $usuario->direccion = $datos->direccion;
             $usuario->telefono = $datos->telefono;
             $usuario->dpi = $datos->dpi;

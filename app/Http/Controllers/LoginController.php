@@ -42,11 +42,13 @@
         public function public_login(Request $request){
 
             try {
+
+                $clave = md5($request->password);
                 
                 $result = app('db')->select("   SELECT ID, NOMBRES, APELLIDOS, EMAIL, ESTATUS
                                                 FROM CATASTRO.SERV_USUARIO
                                                 WHERE UPPER(EMAIL) = UPPER('$request->email')
-                                                AND PASSWORD = '$request->password'
+                                                AND PASSWORD = '$clave'
                                                 AND ESTATUS = 'A'");
 
                 if ($result) {

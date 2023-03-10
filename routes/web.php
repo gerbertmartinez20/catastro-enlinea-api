@@ -31,6 +31,9 @@ $router->post('/obtener_campos_especiales', 'RegistroController@obtener_campos_e
 // Se registra la solicitud de usuario
 $router->post('/registrar_solicitud', 'RegistroController@registrar_solicitud');
 
+// Se modifica el registro del usuario
+$router->post('/editar_solicitud', 'RegistroController@editar_solicitud');
+
 // Obtener todas las solicitudes pendientes de atender 
 $router->post('/obtener_solicitudes', 'SolicitudController@obtener_solicitudes');
 
@@ -144,3 +147,6 @@ $router->get('/consultar_opciones', 'ProductosCatastrales\ProCasController@obten
 
 // Grabar usuario nuevo que no exista en la base de datos del catastro en linea
 $router->post('/usuario_nuevo', 'ProductosCatastrales\ProCasController@ingresar_usuario');
+
+// Obtener los datos del usuario que ya fue registrado para mostrarlos y validarlos en el registro
+$router->post('/obtener_usuario_creado','RegistroController@getCreatedUser');

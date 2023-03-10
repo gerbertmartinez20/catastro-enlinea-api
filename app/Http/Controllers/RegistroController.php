@@ -53,6 +53,14 @@
 
         }
 
+        public function getCreatedUser(Request $request)
+        {
+            $result = Usuario::where('email',$request->email)->first();
+
+            return response()->json($result);
+
+        }
+
         public function obtener_campos_especiales(Request $request){
 
             $result = app('db')->select("   SELECT CAMPO, ETIQUETA
@@ -111,7 +119,19 @@
 
                     return response()->json($data);
 
+                } else {
+
+                    $data = [
+                        "status" => 100,
+                        "message" => "Hay una solicitud rechazada con el correo o dpi proporcionados.",
+                        "title" => "Error...",
+                        "icon" => "error"
+                    ];
+
+                    return response()->json($data);
+
                 }
+
             }
 
             // Validar que el número de archivos adjuntos concuerde con la cantidad solicitada
@@ -138,11 +158,146 @@
             $usuario->direccion = $datos->direccion;
             $usuario->telefono = $datos->telefono;
             $usuario->dpi = $datos->dpi;
+            $usuario->estatus = 'E';
             $usuario->representacion_legal = $datos->representacion_legal;
             $usuario->carne_abogado = $datos->carne_abogado;
             $usuario->carne_valuador = $datos->carne_valuador;
 
             $usuario->save();
+
+            // Creación de la solicitud
+
+            $solicitud = new SolicitudUsuario();
+            $solicitud->usuario_id = $usuario->id;
+            $solicitud->estatus = 'P';
+            $solicitud->tipo_solicitud_id = 1;
+            $solicitud->save();
+
+            // Registrar los archivos adjuntos
+
+            for ($i = 1; $i <= $number_files; $i++) { 
+                
+                $nombre = $request->file('file' . $i)->getClientOriginalName();
+                $identificador = uniqid() . '.' . $request->file('file' . $i)->extension();
+
+                if($request->file('file' . $i)->move('archivos', $identificador)){
+                    
+                    /* Registrar en la base de datos */
+                    $archivo = new ArchivoSolicitud();
+                    $archivo->solicitud_id = $solicitud->id;
+                    $archivo->nombre = $nombre;
+                    $archivo->path = $identificador;
+                    $archivo->save();
+
+                }
+
+            }
+
+            // Registro de las matriculas, si las hubiere
+
+            foreach ($matriculas as $matricula) {
+                
+                $matricula_solicitud = new MatriculaSolicitud();
+                $matricula_solicitud->matricula = $matricula;
+                $matricula_solicitud->estado = 'P';
+                $matricula_solicitud->solicitud_id = $solicitud->id;
+                $matricula_solicitud->save();
+
+            }
+
+            // Registrar el rol del usuario
+            $result = app('db')->table('SERV_USUARIO_TIPO')->insert([
+                'usuario_id' => $usuario->id,
+                'tipo_usuario_id' => $request->tipo_usuario,
+                'estatus' => 'P',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+                'solicitud_id' => $solicitud->id
+            ]);
+
+            // Registrar en el historial de la solicitud
+            $historial = new HistorialSolicitud();
+            $historial->comentario = "Ingreso de solicitud de creación de usuario.";
+            $historial->solicitud_id = $solicitud->id;
+            $historial->save();
+
+            $datos_correo = [
+                // Correo para el solicitante
+                [
+                    "solicitud" => $solicitud->id,
+                    "email" => $datos->email,
+                    "body" => '<p>Se ha generado una solicitud de creación de usuario.  Se procederá a verificar la información proporcionada para luego continuar con la activación del usuario solicitado.</p>',
+                    "body" =>   '<p>Estimado(a): ' . $usuario->nombres . ' ' . $usuario->apellidos . '</p>' .
+                                '<p>Su gestión para la habilitación de usuario para acceder a los servicios catastrales en línea ha sido ingresada exitosamente.</p>' . 
+                                '<p>Cuando su gestión haya sido aprobada se le estará notificando por esta vía</p>' .
+                                '<p>Atentamente, </p>' .
+                                '<p><strong>Dirección de Catastro y Administración del IUSI</strong></p>',
+                                '<p><strong>Teléfono: 2285-8600 / 2285-8611</strong></p>',
+                    "subject" => 'Solicitud de Creación de Usuario No. ' . $solicitud->id
+                ],
+                // Correo para el administrador
+                [
+                    "solicitud" => $solicitud->id,
+                    "email" => 'caherrera@muniguate.com',
+                    "body" => '<p>Se ha generado una nueva solicitud de habilitación de usuario No. ' . $solicitud->id . '</p><p>Por favor ingrese a la siguiente dirección para verificar la información</p><p> <a href="https://udicat.muniguate.com/apps/catastro-enlinea-app/#/admin">Ingresar</a> </p>',
+                    "subject" => 'Solicitud de Creación de Usuario No. ' . $solicitud->id
+                ]
+            ];
+
+            
+            \Queue::push(new MailJob($datos_correo));
+
+            // Enviar correo de notificación
+            $result = $this->enviar_correo($datos_correo);
+
+            // Enviar un mensaje de registro exitoso
+            $data = [
+                "status" => 200,
+                "message" => "La solicitud de creación de usuario ha sido enviada exitosamente.  Se ha enviado un correo electrónico a la dirección <b>" . $datos->email . "</b> como confirmación del ingreso de la solicitud." ,
+                "title" => "Excelente!",
+                "icon" => "success",
+                "data" => $solicitud
+            ];
+
+            return response()->json($data);
+
+        }
+
+        public function editar_solicitud(Request $request){
+
+            $tipo_usuario = json_decode($request->tipo_usuario);
+            $datos = json_decode($request->datos_formulario);
+            $matriculas = json_decode($request->matriculas);
+            $number_files = json_decode($request->number_files);
+            $number_attachments = json_decode($request->number_attachments);
+            $getemail = $request->getemail;
+
+            // Validar que el número de archivos adjuntos concuerde con la cantidad solicitada
+            if ($number_files != $number_attachments) {
+                
+                $data = [
+                    "status" => 100,
+                    "message" => "Hacen falta archivos adjuntos.",
+                    "title" => "Error...",
+                    "icon" => "error"
+                ];
+
+            }
+
+            Usuario::where('email',$getemail)->update([
+                'nombres' => $datos->nombres,
+                'apellidos' => $datos->apellidos,
+                'sexo' => $datos->sexo,
+                'direccion' => $datos->direccion,
+                'telefono' => $datos->telefono,
+                'dpi' => $datos->dpi,
+                'estatus' => 'E',
+                'representacion_legal' => $datos->representacion_legal,
+                'carne_abogado' => $datos->carne_abogado,
+                'carne_valuador' => $datos->carne_valuador
+            ]);
+
+            $usuario = Usuario::where('email',$getemail)->first();
 
             // Creación de la solicitud
 

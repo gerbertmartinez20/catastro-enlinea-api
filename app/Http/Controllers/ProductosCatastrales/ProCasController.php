@@ -19,18 +19,21 @@ class ProCasController extends Controller{
 
         try {
             
-            $result = app('db')->select("   SELECT  COUNT(*) AS EXISTE
+            $result = app('db')->select("   SELECT  NOMBRES,
+                                                    APELLIDOS,
+                                                    DPI,
+                                                    ESTATUS,
+                                                    ID
                                             FROM    CATASTRO.SERV_USUARIO
-                                            WHERE   DPI = '$request->dpi'
-                                            AND     ESTATUS = 'A'");
+                                            WHERE   DPI = '$request->dpi'");
 
             if ($result) {
                 
-                if ($result[0]->existe < 1) {
+                if ($result[0]->id < 1) {
                     
                     $response = [
                         "status" => 0,
-                        "message" => "No existe"
+                        "message" => "No se encontró el usuario"
                     ];
 
                     return response()->json($response);
@@ -39,7 +42,8 @@ class ProCasController extends Controller{
 
                 $response = [
                     "status" => 1,
-                    "message" => "Si existe"
+                    "message" => "Si existe",
+                    "datos" => $result
                 ];
 
                 return response()->json($response);
@@ -48,7 +52,7 @@ class ProCasController extends Controller{
 
             $response = [
                 "status" => 0,
-                "message" => "No existe"
+                "message" => "Hubo un problema"
             ];
 
             return response()->json($response);
@@ -69,10 +73,10 @@ class ProCasController extends Controller{
 
             $opciones = app('db')->select(" SELECT  ID_OPCION,
                                                     NOMBRE,
-                                                    ACTIVO,
+                                                    ESTADO,
                                                     PRECIO
                                             FROM    CATASTRO.SERV_OPCIONES
-                                            WHERE   ACTIVO = 1");
+                                            WHERE   ESTADO = 'A'");
 
             if ($opciones){
 
@@ -233,7 +237,8 @@ class ProCasController extends Controller{
                     "saldo" => $saldo,
                     "catastral" => $catastral,
                     "nomenclatura" => $nomenclatura,
-                    "cumple_requisitos" => $cumple
+                    "cumple_requisitos" => $cumple,
+                    "opcion" => $request->opcion
                 ];
 
             }
@@ -266,11 +271,12 @@ class ProCasController extends Controller{
         $recibo->matricula = $request->matricula;
         $recibo->id_servicio = $request->opcion;
         $recibo->no_recibo = $request->recibo;
+        $recibo->valor = $request->valor;
         $recibo->usuario = $request->dpi;
 
         $recibo->save();
 
-        return $recibo;
+        //return $recibo;
 
         $datos_correo = [
             [
@@ -282,6 +288,7 @@ class ProCasController extends Controller{
         ];
 
         \Queue::push(new MailJob($datos_correo));
+        //$result = $this->enviar_correo($datos_correo);
 
         $response = [
             "status" => 1,
@@ -311,6 +318,7 @@ class ProCasController extends Controller{
                 $usuario->telefono = $request->telefono;
                 $usuario->dpi = $request->dpi;
                 $usuario->password = $request->password;
+                $usuario->estatus = 'P';
                 $usuario->save();
 
                 $response = [
@@ -338,6 +346,41 @@ class ProCasController extends Controller{
 
         return response()->json($response);
 
+    }
+
+    public function enviar_correo($datos){
+
+        foreach ($datos as $data) {
+
+            $data = (object) $data;
+
+            $mail = new \PHPMailer(true); 
+
+            $mail->Host = 'mail2.muniguate.com';  
+            $mail->isSMTP();  
+            $mail->Username   = 'soportecatastro';                  
+            $mail->Password   = 'catastro2015';
+            $mail->CharSet = 'UTF-8';
+
+            $mail->setFrom('no-reply@muniguate.com');
+            $mail->isHTML(true);
+            $mail->addAddress($data->email);
+            $mail->Subject = $data->subject;
+            $mail->Body = $data->body;
+
+            try {
+                
+                $mail->send();
+
+            } catch (\Throwable $th) {
+                
+            }
+            
+
+        }
+
+        return true;
+                   
     }
 
 }
